@@ -1,2 +1,2 @@
 # Statistical_Analysis
- Environmental Epidemiology
+ These Statistical methods are often applied for Environmental Epidemiology
