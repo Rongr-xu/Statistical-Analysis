@@ -1,0 +1,51 @@
+---
+title: "Tidy-R lm"
+author: "RRX"
+format: html
+editor: visual
+---
+
+方差分析
+
+```{r}
+library(rstatix)
+```
+
+```{r}
+#| label: load packages
+#| code-summary: "lm"
+#| message: false
+#| 
+library(tidymodels)
+library(gtsummary)
+library(epiDisplay)
+fit1 <- lm(mpg~wt+am+hp,data = mtcars) #建模
+fit1 %>% tidy(conf.int = T) #直接出系数，p值以及可信区间
+fit1 %>% tbl_regression() #直接整理为表格结果
+fit1 %>% regress.display(crude = T) #单因素分析结果
+```
+
+\*该代码建立在已系统学习R大神Hadley Wickham的《R语言数据科学》上。
+
+
+先前分享了连续数值因变量的建模，今日分享针对二分类和计数资料的Tidy-R结果整理代码。
+主要为logistic和poisson回归，前者针对二分类如有无某种疾病，后者针对计数资料如一天之内的入院人数。
+
+```{r}
+#| label: Logistic and possion
+
+library(tidymodels)
+library(gtsummary)
+library(epiDisplay)
+fit1 <- glm(vs~wt+mpg,data = mtcars,family = binomial()) #建模Logistic回归
+fit1 %>% tidy(conf.int = T,exponentiate = T) #直接出系数，p值以及可信区间
+fit1 %>% tbl_regression(exponentiate = T) #直接整理为表格结果
+fit1 %>% logistic.display(crude = T) #单因素分析结果
+
+
+fit2 <- glm(vs~wt+mpg,data = mtcars,family = poisson()) #建模poisson回归
+fit2 %>% tidy(conf.int = T,exponentiate = T) #直接出系数，p值以及可信区间
+fit2 %>% tbl_regression(exponentiate = T) #直接整理为表格结果
+fit2 %>% idr.display(crude = T) #单因素分析结果
+```
+\*该代码建立在已系统学习R大神Hadley Wickham的《R语言数据科学》上
