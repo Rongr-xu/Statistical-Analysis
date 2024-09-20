@@ -30,3 +30,11 @@ fit2 %>% tidy(exponentiate = T,conf.int = T)
 fit2 %>% tbl_regression(exponentiate = T,conf.int = T)
 
 cox.zph(fit2) #等比例风险检验
+
+# 数据存在聚类情况, 需要使用cluster 参数或 frailty 
+# example
+
+
+
+
+
