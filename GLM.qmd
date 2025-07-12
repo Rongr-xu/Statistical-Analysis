@@ -1,0 +1,135 @@
+---
+title: "GLM"
+author: "XRR"
+format: html
+editor: visual
+---
+
+# Load Packages
+
+```{r}
+#| message: false
+library(epiDisplay)
+library(lmtest)
+library(medicaldata)
+```
+
+# Models
+## 一般线性模型
+
+```{r}
+fitlm <- lm(mpg~wt+am+hp,data = mtcars)
+summary(fitlm)
+regress.display(fitlm,decimal = 3,crude = T)
+```   
+
+
+## Logistic模型
+
+```{r}
+fitlogis <- 
+  glm(Recurrence ~ Age + T.Stage + PreopPSA,data = blood_storage,
+      family = binomial())
+summary(fitlogis)
+logistic.display(fitlogis)
+```
+
+
+## 广义加性模型
+
+```{r}
+library(mgcv)
+
+
+
+fitgam <- 
+  gam(mpg~s(wt)+s(hp),data = mtcars)
+summary(fitgam)
+plot(fitgam,select = 1,se = T)
+
+
+# Logistic 回归
+
+fitgam <- 
+  gam(am~s(wt)+s(hp),data = mtcars,family = binomial())
+summary(fitgam)
+plot(fitgam,select = 1,se = T)
+
+```
+
+
+
+## 条件Logistic
+
+```{r}
+data(VC1to6)
+VC1to6$fsmoke <- factor(VC1to6$smoking)
+clr1 <- clogit(case ~ alcohol + fsmoke + strata(matset),
+               data=VC1to6)
+clogistic.display(clr1,crude = F,decimal = 3)
+```
+
+## 多分类logistic
+
+```{r}
+house.multinom <- multinom(Sat ~ Infl + Type + Cont, 
+                           weights = Freq, 
+                           data = housing)
+summary(house.multinom)
+mlogit.display(house.multinom)
+```
+
+## poisson 回归
+
+```{r}
+data(DHF99)
+attach(DHF99)
+model.poisson <- glm(containers ~ education + viltype,
+                     family=poisson, data=DHF99)
+idr.display(model.poisson,crude = F)  
+
+model.nb <- glm.nb(containers ~ education + viltype, 
+                   data=DHF99)
+idr.display(model.nb,crude = F) 
+detach(DHF99)
+```
+
+
+## 修正poisson回归
+
+Reference: <https://doi.org/10.1093/aje/kwh090>
+
+```{r}
+#| message: false
+library(rqlm)
+data(exdata02)
+rqlm(y ~ x1 + x2 + x3 + x4,
+     data=exdata02, 
+     family=poisson, eform=TRUE)
+
+```
+
+## 条件poisson回归
+
+Reference: <https://doi.org/10.1186/s12874-022-01612-x>
+
+```{r}
+#| message: false
+
+library(gnm)
+
+# 
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
