@@ -1,0 +1,203 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+中介效应分析 
+
+几个强假设：
+1. 强可忽视性，即中介与潜在结果独立 （控制了处理因素与混杂）
+2. 无处理后混杂因素（引入混杂与中介变量和结局相关）以及预处理混杂因素
+
+
+中介效应：我们不仅需要理解因果效应，还需要了解效应的机制如何产生的。中介效应分析既有模型为基础的中介，也有实验设计为基础的中介分析。 Overview of mediation 中介效应需要估计两种值，一个为ACME(average causal mediantion effect)又称为非直接效用，平均因果效应值。一个为ADE(average direct effects)平均直接效应。
+
+中介效应的使用方法是quasi-Bayesion Monte Carlo method based on normal approximation. 如果使用bootstrap法，我们设定boot参数为True。
+
+当中介因素和处理因素之间存在交互作用,直接使用相乘交互模型的设定，
+进行计算中介作用。
+还有重要函数mediation与ameliation学会如何使用
+mediation包都是采用模型为基础的方法进行中介分析
+
+
+```{r mediation,message=FALSE,warning=FALSE}
+# Model-based causal mediation analysis
+library(mediation)
+```
+
+## mediate
+
+```{r}
+set.seed(1234)
+data("framing", package = "mediation")
+#中介变量的模型构建
+med.fit <- lm(emo ~ treat + age + educ + gender + income, data = framing)
+
+#效应模型的构建
+out.fit <- glm(cong_mesg ~ emo + treat + age + educ + gender + income,
+               data = framing, family = binomial())
+
+med.out <- mediate(med.fit, out.fit, treat = "treat",
+                   mediator = "emo", sims = 100)
+
+# 设定稳定的标准误
+med.out <- mediate(med.fit, out.fit, treat = "treat",
+                   mediator = "emo", sims = 100,robustSE = T)
+
+# bootstrap 方法
+med.out <- mediate(med.fit, out.fit, treat = "treat",
+                   mediator = "emo", sims = 100,boot = T)
+
+
+# ACME 的效应可能与treatment相关
+
+# med
+
+# 中介变量与暴露因素的交互效应
+med.fit <- lm(emo ~ treat + age + educ + gender + income, data=framing)
+out.fit <- 
+  glm(cong_mesg ~ emo * treat + age + educ + gender + income,
+      data = framing, 
+      family = binomial())
+med.out <- mediate(med.fit, out.fit, treat = "treat", mediator = "emo",
+ robustSE = TRUE, sims = 100)
+
+summary(med.out)
+test.TMint(med.out, conf.level = .95) # 检测交互作用
+
+```
+
+当存在缺失数据时，先进性插补，mediations函数(进行多次中介分析），然后amelidiate进行合并。
+
+
+## moderated mediation
+
+调节中介效应，调节变量与处理变量之间存在交互作用，非处理变量与中介变量的交互
+
+分析者一般会假设中介作用的大小跟前处理变量，或者称之为moderator有关。也就是说ACME受到moderator的影响，如年龄这个moderator。
+
+分析moderator 的作用，有两种方法。方法一：先拟合中介和结果模型，模型中包含treatment与moderator的交互作用，模型拟合结束之后，在进行指定moderator的水平。方法二：直接检验不同moderator水平上的ACME的差异的显著性。
+
+```{r}
+# 分析moderator的作用
+# 拟合中介和结果模型
+# 
+
+med.fit <- lm(emo ~ treat * age + educ + gender + income, data=framing)
+out.fit <- glm(cong_mesg ~ treat * age + emo * age + educ + gender+
+               income, data = framing, family = binomial("probit"))
+
+#指定moderator的水平
+# 我们得到了两个结果，一个为年龄20岁的中介效应
+# 第二个为年龄是60岁的中介效应
+
+med.age20 <- mediate(med.fit, out.fit, treat = "treat",
+                     mediator = "emo", 
+                     covariates = list(age = 20), sims = 100)
+med.age60 <- mediate(med.fit, out.fit, treat = "treat",mediator = "emo",
+                     covariates = list(age = 60), sims = 100)
+summary(med.age20)
+
+summary(med.age60)
+
+#得到两种数据集的输出结果
+med.init <- mediate(med.fit, out.fit, treat = "treat", 
+                    mediator = "emo", sims=100)
+# 差异进行检验
+test.modmed(med.init, covariates.1 = list(age = 20),
+            covariates.2 = list(age = 60), sims = 100)
+
+```
+
+## Non-binary treatment variable
+
+暴露因素并不是简单二分类，如析因分析中2*2的处理，将出现四种可能性。我们需要创建一个新的变量如cond，包含了四个水平。分析步骤类似，但是比较水平依靠于分析者的设定所变得不一样。
+当多分类的时候，需要指定参照水平和比较水平
+
+```{r}
+# 当暴露水平超过两类时，需要指定不同类别相对应的中介效应
+med.fit <- lm(emo ~ cond + age + educ + gender + income, data = framing)
+
+out.fit <- glm(cong_mesg ~ emo + cond + age + educ + gender + income,
+data = framing, family = binomial("probit"))
+
+ med23.out <- mediate(med.fit, out.fit, treat = "cond", 
+                      mediator = "emo",
+control.value = 2, treat.value = 3, sims = 100)
+summary(med23.out)
+
+# 将第一个水平作为参照，刻画第四个水平的中介效应
+med14.out <- mediate(med.fit, out.fit, treat = "cond", mediator = "emo",
+ control.value = 1, treat.value = 4, sims = 100)
+summary(med14.out)
+
+```
+
+## Sensitivity analysis
+
+medsens函数对中介分析进行敏感性检验
+检验可忽略的假设
+
+```{r}
+# 敏感性检验
+# 先设定中介效应与结局回归模型残差的相关性
+
+med.fit <- lm(emo ~ treat + age + educ + gender + income, data = framing)
+out.fit <- glm(cong_mesg ~ emo + treat + age + educ + gender + income,
+ data = framing, family = binomial("probit"))
+med.out <- mediate(med.fit, out.fit, treat = "treat", mediator = "emo",
+ robustSE = TRUE, sims = 100)
+sens.out <- 
+  medsens(med.out, rho.by = 0.1, effect.type = "indirect", sims = 100)
+summary(sens.out)
+
+
+```
+
+
+## Multilevel data and Causal mediation
+
+多水平中介
+
+```{r}
+library(lme4)
+
+med.fit <- glmer(attachment ~ catholic + gender + income + pared + (1|SCH_ID),
+ family = binomial(link = "logit"), data = student)
+out.fit <- glmer(fight ~ catholic*attachment + gender + income + 
+                   pared + (1 + attachment|SCH_ID),
+                 family = binomial(link = "logit"), data = student)
+
+med.out <- mediate(med.fit, out.fit, treat = "catholic", mediator = "attachment",
+                   sims = 100)
+summary(med.out)
+
+summary(med.out,output="bygroup") # 按不同组输出中介效应量
+
+
+
+data("school", package = "mediation")
+med.fit <- lm(smorale ~ free + catholic + coed, data = school)
+out.fit <- lmer(late ~ free + smorale + catholic + coed +
+ gender + income + pared + (1|SCH_ID),
+ data = student)
+med.out <- mediate(med.fit, out.fit, treat = "free", 
+                   mediator = "smorale",
+ control.value = 3, 
+ treat.value = 4, 
+ sims = 100)
+```
+
+## 多重中介效应
+
+```{r}
+# 多重中介效应
+# only one alternative mediator
+
+multimed()
+
+```
+
+
+
+
